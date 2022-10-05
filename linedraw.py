@@ -2,11 +2,16 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, "..")
-from .scripts.perlin import *
-from .scripts.filters import *
-from .scripts.strokesort import *
-from .scripts.util import *
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
+from PIL.ImageDraw import ImageDraw
+
+sys.path.append("linedraw")
+from scripts.perlin import *
+from scripts.filters import *
+from scripts.strokesort import *
+from scripts.util import *
 
 
 def makesvg(lines):
@@ -36,6 +41,7 @@ class LineDraw:
         self.resolution = resolution
         self.hatch_size = hatch_size
         self.contour_simplify = contour_simplify
+        self.perlin = Perlin()
 
     def find_edges(self, IM):
         print("finding edges...")
@@ -133,13 +139,12 @@ class LineDraw:
 
         for i in range(0, len(contours)):
             for j in range(0, len(contours[i])):
-                contours[i][j] = int(contours[i][j][0] + 10 * noise(i * 0.5, j * 0.1, 1)), int(
-                    contours[i][j][1] + 10 * noise(i * 0.5, j * 0.1, 2))
+                contours[i][j] = int(contours[i][j][0] + 10 * self.perlin.noise(i * 0.5, j * 0.1, 1)), int(
+                    contours[i][j][1] + 10 * self.perlin.noise(i * 0.5, j * 0.1, 2))
 
         return contours
 
-    @staticmethod
-    def hatch(IM, sc=16):
+    def hatch(self, IM, sc=16):
         print("hatching...")
         PX = IM.load()
         w, h = IM.size
@@ -176,8 +181,8 @@ class LineDraw:
 
         for i in range(0, len(lines)):
             for j in range(0, len(lines[i])):
-                lines[i][j] = int(lines[i][j][0] + sc * noise(i * 0.5, j * 0.1, 1)), int(
-                    lines[i][j][1] + sc * noise(i * 0.5, j * 0.1, 2)) - j
+                lines[i][j] = int(lines[i][j][0] + sc * self.perlin.noise(i * 0.5, j * 0.1, 1)), int(
+                    lines[i][j][1] + sc * self.perlin.noise(i * 0.5, j * 0.1, 2)) - j
         return lines
 
     def sketch(self, path):

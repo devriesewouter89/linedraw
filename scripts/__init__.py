@@ -1,4 +1,1 @@
-from .filters import *
-from .perlin import *
-from .strokesort import *
-from .util import *
+__all__ = ["filters", "perlin", "strokesort", "util"]
