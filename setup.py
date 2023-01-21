@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+from setuptools import setup
 
-from setuptools import setup, find_packages
-setup(name='linedraw', packages=find_packages(), license='MIT')
+setup(
+    name='linedraw',
+    version='0.0.1',
+    packages=["linedraw", 'linedraw.scripts'],
+    scripts=['linedraw/linedraw.py'],
+    license='MIT',
+    install_requires=['opencv-python',
+                      'numpy',
+                      'Pillow'
+                      ]
+)
