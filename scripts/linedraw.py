@@ -7,11 +7,11 @@ import numpy as np
 from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
-sys.path.append("linedraw")
-from scripts.perlin import *
-from scripts.filters import *
-from scripts.strokesort import *
-from scripts.util import *
+# sys.path.append("linedraw")
+from perlin import *
+from filters import *
+from strokesort import *
+from util import *
 
 
 def makesvg(lines):
@@ -25,7 +25,8 @@ def makesvg(lines):
 
 
 class LineDraw:
-    def __init__(self, export_path: Path = Path("output/out.svg"), draw_contours: bool = True, draw_hatch: bool = True,
+    def __init__(self, export_path: Path = Path("../output/out.svg"), draw_contours: bool = True,
+                 draw_hatch: bool = True,
                  hatch_size: int = 16, contour_simplify: int = 2, resolution: int = 1024):
         try:
             import numpy as np
