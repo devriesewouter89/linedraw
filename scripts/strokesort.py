@@ -1,4 +1,4 @@
-from .util import distsum
+from util import distsum
 
 
 def sortlines(lines):
