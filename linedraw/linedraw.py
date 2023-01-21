@@ -8,10 +8,10 @@ from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
 # sys.path.append("linedraw")
-from perlin import *
-from filters import *
-from strokesort import *
-from util import *
+from linedraw.scripts.perlin import *
+from linedraw.scripts.filters import *
+from linedraw.scripts.strokesort import *
+from linedraw.scripts.util import *
 
 
 def makesvg(lines):

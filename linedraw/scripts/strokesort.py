@@ -1,4 +1,4 @@
-from util import distsum
+from linedraw.scripts.util import distsum
 
 
 def sortlines(lines):
@@ -38,7 +38,7 @@ def visualize(lines):
 
 
 if __name__ == "__main__":
-    import linedraw
+    from linedraw import linedraw
 
     # linedraw.draw_hatch = False
     lines = linedraw.sketch("Lenna")
