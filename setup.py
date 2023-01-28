@@ -7,7 +7,7 @@ setup(
     packages=["linedraw", 'linedraw.scripts'],
     scripts=['linedraw/linedraw.py'],
     license='MIT',
-    install_requires=['opencv-python',
+    install_requires=['opencv-contrib-python',
                       'numpy',
                       'Pillow'
                       ]
