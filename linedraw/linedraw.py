@@ -7,27 +7,40 @@ import numpy as np
 from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
-# sys.path.append("linedraw")
-from linedraw.scripts.perlin import *
-from linedraw.scripts.filters import *
-from linedraw.scripts.strokesort import *
-from linedraw.scripts.util import *
+sys.path.append("linedraw")
+from scripts.perlin import *
+from scripts.filters import *
+from scripts.strokesort import *
+from scripts.util import *
+from itertools import chain
 
 
-def makesvg(lines):
-    print("generating svg file...")
-    out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1">'
-    for l in lines:
-        l = ",".join([str(p[0] * 0.5) + "," + str(p[1] * 0.5) for p in l])
-        out += '<polyline points="' + l + '" stroke="black" stroke-width="2" fill="none" />\n'
-    out += '</svg>'
-    return out
+def max_list_tuples(nums):
+    result = map(max, zip(*nums))
+    return list(result)
 
 
 class LineDraw:
-    def __init__(self, export_path: Path = Path("../output/out.svg"), draw_contours: bool = True,
+    def __init__(self, export_path: Path = Path("../output/out.svg"),
+                 draw_contours: bool = True,
                  draw_hatch: bool = True,
-                 hatch_size: int = 16, contour_simplify: int = 2, resolution: int = 1024):
+                 hatch_size: int = 16,
+                 contour_simplify: int = 2,
+                 no_polylines: bool = True,
+                 resize: bool = False,
+                 longest: int = 110,  # mm
+                 shortest: int = 80,  # mm
+                 resolution: int = 1024):
+        """
+
+        :param export_path:
+        :param draw_contours:
+        :param draw_hatch:
+        :param hatch_size:
+        :param contour_simplify:
+        :param no_polylines: if no_polylines is true, convert all polylines to paths
+        :param resolution:
+        """
         try:
             import numpy as np
             import cv2
@@ -43,6 +56,12 @@ class LineDraw:
         self.hatch_size = hatch_size
         self.contour_simplify = contour_simplify
         self.perlin = Perlin()
+        self.no_polylines = no_polylines
+        self.longest = longest
+        self.shortest = shortest
+        self.resize = resize
+        self.orig_width = 0
+        self.orig_heigth = 0
 
     def find_edges(self, IM):
         print("finding edges...")
@@ -186,6 +205,48 @@ class LineDraw:
                     lines[i][j][1] + sc * self.perlin.noise(i * 0.5, j * 0.1, 2)) - j
         return lines
 
+    # @staticmethod
+    def makesvg(self, lines, no_polyline: bool = False):
+        print("generating svg file...")
+        if (self.orig_width == 0 or self.orig_heigth == 0):
+            # to find the max width and height, we first flatten the 2D array
+            flattened_lines = list(chain.from_iterable(lines))
+            # then we look for the max x and max y in all tuples
+            (self.orig_width, self.orig_heigth) = max_list_tuples(flattened_lines)
+        out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
+                                                                                                         self.longest)
+        if not no_polyline:
+            line_type_prefix = '<polyline points="'
+        else:
+            print("we're using paths instead of polylines")
+            line_type_prefix = '<path d="M'
+        for l in lines:
+            l = ",".join([str(p[0] * 0.5) + "," + str(p[1] * 0.5) for p in l])
+            out += line_type_prefix + l + '" stroke="black" stroke-width="0.1" fill="none" />\n'
+
+        out += '</svg>'
+        return out
+
+    def resize_svg_lines(self, lines):
+        if self.orig_width == 0 or self.orig_heigth == 0:
+            # to find the max width and height, we first flatten the 2D array
+            flattened_lines = list(chain.from_iterable(lines))
+            # then we look for the max x and max y in all tuples
+            (self.orig_width, self.orig_heigth) = max_list_tuples(flattened_lines)
+        scale_longest = self.longest * 3.543307 / max(self.orig_width,
+                                                      self.orig_heigth)  # we have to take the conversion mm to px into account, being 3.543307
+        scale_shortest = self.shortest * 3.543307 / min(self.orig_width, self.orig_heigth)
+        # we take the smallest scale factor to scale both directions
+        scale_factor = min(scale_longest, scale_shortest)
+        for idx, line in enumerate(lines):
+            line_update = []
+            for elem in line:
+                x_1 = (elem[0] * scale_factor)
+                x_2 = (elem[1] * scale_factor)
+                line_update.append((x_1, x_2))
+            lines[idx] = line_update
+        return lines
+
     def sketch(self, path):
         IM = None
         possible = [path, "images/" + path, "images/" + path + ".jpg", "images/" + path + ".png",
@@ -221,10 +282,11 @@ class LineDraw:
             for l in lines:
                 draw.line(l, (0, 0, 0), 5)
             disp.show()
-
-        f = open(self.export_path, 'w')
-        f.write(makesvg(lines))
-        f.close()
+        if self.resize:
+            lines = self.resize_svg_lines(lines)
+        svg = self.makesvg(lines, self.no_polylines)
+        with open(self.export_path, 'w') as f:
+            f.write(svg)
         print(len(lines), "strokes.")
         print("done.")
         return lines
@@ -264,7 +326,18 @@ if __name__ == "__main__":
     parser.add_argument('--contour_simplify', dest='contour_simplify',
                         default=ld.contour_simplify, action='store', nargs='?', type=int,
                         help='Level of contour simplification. eg. 1, 2, 3')
-
+    parser.add_argument('--no_polylines', '-np', dest='no_polylines', const=ld.no_polylines,
+                        default=not ld.no_polylines,
+                        action='store_const', help="Don't use polylines.")
+    parser.add_argument('--resize', '-rs', dest='resize', const=not ld.resize,
+                        default=ld.resize,
+                        action='store_const', help="resize")
+    parser.add_argument('--longest', '-x', dest='longest',
+                        default=110, action='store', nargs='?', type=int,
+                        help='longest side of paper (mm)')
+    parser.add_argument('--shortest', '-y', dest='shortest',
+                        default=80, action='store', nargs='?', type=int,
+                        help='shortest side of paper (mm)')
     args = parser.parse_args()
 
     ld.export_path = args.output_path
@@ -274,4 +347,8 @@ if __name__ == "__main__":
     ld.contour_simplify = args.contour_simplify
     ld.show_bitmap = args.show_bitmap
     ld.no_cv = args.no_cv
+    ld.no_polylines = args.no_polylines
+    ld.resize = args.resize
+    ld.longest = args.longest
+    ld.shortest = args.shortest
     ld.sketch(args.input_path)
