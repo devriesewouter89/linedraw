@@ -1,5 +1,6 @@
 import argparse
 import sys
+from itertools import chain
 from pathlib import Path
 
 import cv2
