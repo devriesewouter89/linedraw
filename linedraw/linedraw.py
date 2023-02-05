@@ -12,12 +12,18 @@ from linedraw.scripts.perlin import *
 from linedraw.scripts.filters import *
 from linedraw.scripts.strokesort import *
 from linedraw.scripts.util import *
-from itertools import chain
+# sys.path.append("linedraw")
+# from scripts.perlin import *
+# from scripts.filters import *
+# from scripts.strokesort import *
+# from scripts.util import *
+# from itertools import chain
 
 
-def max_list_tuples(nums):
-    result = map(max, zip(*nums))
-    return list(result)
+def min_max_list_tuples(nums):
+    result_max = map(max, zip(*nums))
+    result_min = map(min, zip(*nums))
+    return list(result_min), list(result_max)
 
 
 class LineDraw:
@@ -32,7 +38,6 @@ class LineDraw:
                  shortest: int = 80,  # mm
                  resolution: int = 1024):
         """
-
         :param export_path:
         :param draw_contours:
         :param draw_hatch:
@@ -40,6 +45,8 @@ class LineDraw:
         :param contour_simplify:
         :param no_polylines: if no_polylines is true, convert all polylines to paths
         :param resolution:
+        :param shortest: the shortest side of frame or paper to scale towards
+        :param longest: the longest side of frame or paper to scale towards
         """
         try:
             import numpy as np
@@ -208,11 +215,11 @@ class LineDraw:
     # @staticmethod
     def makesvg(self, lines, no_polyline: bool = False):
         print("generating svg file...")
-        if (self.orig_width == 0 or self.orig_heigth == 0):
-            # to find the max width and height, we first flatten the 2D array
-            flattened_lines = list(chain.from_iterable(lines))
-            # then we look for the max x and max y in all tuples
-            (self.orig_width, self.orig_heigth) = max_list_tuples(flattened_lines)
+        # if (self.orig_width == 0 or self.orig_heigth == 0):
+        #     # to find the max width and height, we first flatten the 2D array
+        #     flattened_lines = list(chain.from_iterable(lines))
+        #     # then we look for the max x and max y in all tuples
+        #     (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
         out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
                                                                                                          self.longest)
         if not no_polyline:
@@ -228,21 +235,29 @@ class LineDraw:
         return out
 
     def resize_svg_lines(self, lines):
+        print("resizing")
         if self.orig_width == 0 or self.orig_heigth == 0:
             # to find the max width and height, we first flatten the 2D array
             flattened_lines = list(chain.from_iterable(lines))
             # then we look for the max x and max y in all tuples
-            (self.orig_width, self.orig_heigth) = max_list_tuples(flattened_lines)
-        scale_longest = self.longest * 3.543307 / max(self.orig_width,
-                                                      self.orig_heigth)  # we have to take the conversion mm to px into account, being 3.543307
+            (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
+        # we have to take the conversion mm to px into account, being 3.543307
+        scale_longest = self.longest * 3.543307 / max(self.orig_width, self.orig_heigth)
         scale_shortest = self.shortest * 3.543307 / min(self.orig_width, self.orig_heigth)
         # we take the smallest scale factor to scale both directions
         scale_factor = min(scale_longest, scale_shortest)
+        old_center = ((self.orig_width - x_min) * scale_factor / 2, (self.orig_heigth - y_min) * scale_factor / 2)
+        if self.orig_width > self.orig_heigth:
+            new_center = (self.longest * 3.543307 / 2, self.shortest * 3.543307 / 2)
+        else:
+            new_center = (self.shortest * 3.543307 / 2, self.longest * 3.543307 / 2)
+        center_transformation = tuple(np.subtract(new_center, old_center))
         for idx, line in enumerate(lines):
             line_update = []
             for elem in line:
-                x_1 = (elem[0] * scale_factor)
-                x_2 = (elem[1] * scale_factor)
+                x_1 = ((elem[0] - x_min) * scale_factor) + center_transformation[
+                    0]  # new position + offset to center the image?
+                x_2 = ((elem[1] - y_min) * scale_factor) + center_transformation[1]
                 line_update.append((x_1, x_2))
             lines[idx] = line_update
         return lines
