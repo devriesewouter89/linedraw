@@ -238,7 +238,8 @@ class LineDraw:
         out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
                                                                                                          self.longest)
         if(self.border):
-            out += '<rect x="0" width="110" height="80" fill="none" stroke="black" stroke-width="0.1"/>'
+            out += '<rect x="0" width="{}" height="{}" fill="none" stroke="black" stroke-width="0.1"/>'.format(
+                self.shortest, self.longest)
         if not no_polyline:
             line_type_prefix = '<polyline points="'
         else:
