@@ -49,6 +49,17 @@ class LineDraw:
         :param resolution:
         :param shortest: the shortest side of frame or paper to scale towards
         :param longest: the longest side of frame or paper to scale towards
+        @param export_path:
+        @param draw_contours:
+        @param draw_hatch:
+        @param hatch_size:
+        @param contour_simplify:
+        @param no_polylines:
+        @param draw_border:
+        @param resize:
+        @param longest:
+        @param shortest:
+        @param resolution:
         """
         try:
             import numpy as np
