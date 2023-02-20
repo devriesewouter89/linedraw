@@ -34,6 +34,7 @@ class LineDraw:
                  hatch_size: int = 16,
                  contour_simplify: int = 2,
                  no_polylines: bool = True,
+                 draw_border: bool = True,
                  resize: bool = False,
                  longest: int = 110,  # mm
                  shortest: int = 80,  # mm
@@ -65,6 +66,7 @@ class LineDraw:
         self.contour_simplify = contour_simplify
         self.perlin = Perlin()
         self.no_polylines = no_polylines
+        self.border = draw_border
         self.longest = longest
         self.shortest = shortest
         self.resize = resize
@@ -213,6 +215,7 @@ class LineDraw:
                     lines[i][j][1] + sc * self.perlin.noise(i * 0.5, j * 0.1, 2)) - j
         return lines
 
+
     # @staticmethod
     def makesvg(self, lines, no_polyline: bool = False):
         print("generating svg file...")
@@ -223,6 +226,8 @@ class LineDraw:
         #     (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
         out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
                                                                                                          self.longest)
+        if(self.border):
+            out += '<rect x="0" width="110" height="80" fill="none" stroke="black" stroke-width="0.1"/>'
         if not no_polyline:
             line_type_prefix = '<polyline points="'
         else:
@@ -237,11 +242,10 @@ class LineDraw:
 
     def resize_svg_lines(self, lines):
         print("resizing")
-        if self.orig_width == 0 or self.orig_heigth == 0:
-            # to find the max width and height, we first flatten the 2D array
-            flattened_lines = list(chain.from_iterable(lines))
-            # then we look for the max x and max y in all tuples
-            (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
+        # to find the max width and height, we first flatten the 2D array
+        flattened_lines = list(chain.from_iterable(lines))
+        # then we look for the max x and max y in all tuples
+        (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
         # we have to take the conversion mm to px into account, being 3.543307
         scale_longest = self.longest * 3.543307 / max(self.orig_width, self.orig_heigth)
         scale_shortest = self.shortest * 3.543307 / min(self.orig_width, self.orig_heigth)
@@ -345,6 +349,9 @@ if __name__ == "__main__":
     parser.add_argument('--no_polylines', '-np', dest='no_polylines', const=ld.no_polylines,
                         default=not ld.no_polylines,
                         action='store_const', help="Don't use polylines.")
+    parser.add_argument('--draw-border', '-db', dest='draw_border', const=ld.border,
+                        default=not ld.border,
+                        action='store_const', help="draw border")
     parser.add_argument('--resize', '-rs', dest='resize', const=not ld.resize,
                         default=ld.resize,
                         action='store_const', help="resize")
@@ -367,4 +374,5 @@ if __name__ == "__main__":
     ld.resize = args.resize
     ld.longest = args.longest
     ld.shortest = args.shortest
+    ld.border = args.draw_border
     ld.sketch(args.input_path)
