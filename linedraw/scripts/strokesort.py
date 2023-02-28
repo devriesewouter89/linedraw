@@ -1,4 +1,5 @@
 from linedraw.scripts.util import distsum
+# from scripts.util import distsum
 
 
 def sortlines(lines):

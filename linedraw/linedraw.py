@@ -1,6 +1,5 @@
 import argparse
 import sys
-from itertools import chain
 from pathlib import Path
 
 import cv2
@@ -8,7 +7,7 @@ import numpy as np
 from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
-# sys.path.append("linedraw")
+sys.path.append("linedraw")
 from linedraw.scripts.perlin import *
 from linedraw.scripts.filters import *
 from linedraw.scripts.strokesort import *
@@ -83,6 +82,13 @@ class LineDraw:
         self.resize = resize
         self.orig_width = 0
         self.orig_heigth = 0
+        self.center_transformation = (0, 0)
+        self.x_min = 0
+        self.y_min = 0
+        self.x_max = shortest * 3.7795
+        self.y_max = longest * 3.7795
+        self.scale_factor = 1.0  # scaling factor to be calculated to have the image at max within the borders
+        self.scale_margin_factor = 0.9  # factor so a drawing is a little of the edges (visually more pleasing)
 
     def find_edges(self, IM):
         print("finding edges...")
@@ -226,58 +232,57 @@ class LineDraw:
                     lines[i][j][1] + sc * self.perlin.noise(i * 0.5, j * 0.1, 2)) - j
         return lines
 
-
     # @staticmethod
     def makesvg(self, lines, no_polyline: bool = False):
         print("generating svg file...")
-        # if (self.orig_width == 0 or self.orig_heigth == 0):
-        #     # to find the max width and height, we first flatten the 2D array
-        #     flattened_lines = list(chain.from_iterable(lines))
-        #     # then we look for the max x and max y in all tuples
-        #     (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
         out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
                                                                                                          self.longest)
-        if(self.border):
-            out += '<rect x="0" width="{}" height="{}" fill="none" stroke="black" stroke-width="0.1"/>'.format(
+        if self.border:
+            out += '<rect x="0" width="{}mm" height="{}mm" fill="none" stroke="black" stroke-width="1.0"/>'.format(
                 self.shortest, self.longest)
+        if self.resize:
+            print("resizing & recentering")
+            self.calc_scale_factor(lines)
+            self.recenter()
+            out += '<g transform="scale( {} {}) translate( {} {} )">'.format(
+                self.scale_factor * self.scale_margin_factor,
+                self.scale_factor * self.scale_margin_factor,
+                self.center_transformation[0],
+                self.center_transformation[1])
         if not no_polyline:
             line_type_prefix = '<polyline points="'
         else:
             print("we're using paths instead of polylines")
             line_type_prefix = '<path d="M'
         for l in lines:
-            l = ",".join([str(p[0] * 0.5) + "," + str(p[1] * 0.5) for p in l])
+            l = ",".join([str(p[0]) + "," + str(p[1]) for p in l])
             out += line_type_prefix + l + '" stroke="black" stroke-width="0.1" fill="none" />\n'
-
+        if self.resize:
+            out += '</g>'
         out += '</svg>'
         return out
 
-    def resize_svg_lines(self, lines):
-        print("resizing")
+    def calc_scale_factor(self, lines):
         # to find the max width and height, we first flatten the 2D array
         flattened_lines = list(chain.from_iterable(lines))
         # then we look for the max x and max y in all tuples
-        (x_min, y_min), (self.orig_width, self.orig_heigth) = min_max_list_tuples(flattened_lines)
-        # we have to take the conversion mm to px into account, being 3.543307
-        scale_longest = self.longest * 3.543307 / max(self.orig_width, self.orig_heigth)
-        scale_shortest = self.shortest * 3.543307 / min(self.orig_width, self.orig_heigth)
+        (self.x_min, self.y_min), (self.x_max, self.y_max) = min_max_list_tuples(flattened_lines)
+        self.orig_width = self.x_max - self.x_min
+        self.orig_heigth = self.y_max - self.y_min
+        # we have to take the conversion mm to px into account: 1mm ≅ 3.7795px or
+        # user units [oreilly](https://oreillymedia.github.io/Using_SVG/guide/units.html)
+        scale_longest = self.longest * 3.7795 / self.orig_heigth
+        scale_shortest = self.shortest * 3.7795 / self.orig_width
         # we take the smallest scale factor to scale both directions
-        scale_factor = min(scale_longest, scale_shortest)
-        old_center = ((self.orig_width - x_min) * scale_factor / 2, (self.orig_heigth - y_min) * scale_factor / 2)
-        if self.orig_width > self.orig_heigth:
-            new_center = (self.longest * 3.543307 / 2, self.shortest * 3.543307 / 2)
-        else:
-            new_center = (self.shortest * 3.543307 / 2, self.longest * 3.543307 / 2)
-        center_transformation = tuple(np.subtract(new_center, old_center))
-        for idx, line in enumerate(lines):
-            line_update = []
-            for elem in line:
-                x_1 = ((elem[0] - x_min) * scale_factor) + center_transformation[
-                    0]  # new position + offset to center the image?
-                x_2 = ((elem[1] - y_min) * scale_factor) + center_transformation[1]
-                line_update.append((x_1, x_2))
-            lines[idx] = line_update
-        return lines
+        self.scale_factor = min(scale_longest, scale_shortest)
+        print("scale factor = {}".format(self.scale_factor))
+
+    def recenter(self):
+        old_center = (round((self.orig_width / 2 + self.x_min)),
+                      round((self.orig_heigth / 2 + self.y_min)))
+        new_center = (round(self.shortest * 3.7795 / (2 * self.scale_factor * self.scale_margin_factor)),
+                      round(self.longest * 3.7795 / (2 * self.scale_factor * self.scale_margin_factor)))
+        self.center_transformation = tuple(np.subtract(new_center, old_center))
 
     def sketch(self, path):
         IM = None
@@ -314,8 +319,8 @@ class LineDraw:
             for l in lines:
                 draw.line(l, (0, 0, 0), 5)
             disp.show()
-        if self.resize:
-            lines = self.resize_svg_lines(lines)
+        # if self.resize:
+        #     lines = self.resize_svg_lines(lines)
         svg = self.makesvg(lines, self.no_polylines)
         with open(self.export_path, 'w') as f:
             f.write(svg)
