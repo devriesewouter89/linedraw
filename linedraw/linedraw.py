@@ -8,16 +8,18 @@ from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
 sys.path.append("linedraw")
-from linedraw.scripts.perlin import *
-from linedraw.scripts.filters import *
-from linedraw.scripts.strokesort import *
-from linedraw.scripts.util import *
+# from linedraw.scripts.perlin import *
+# from linedraw.scripts.filters import *
+# from linedraw.scripts.strokesort import *
+# from linedraw.scripts.util import *
+
+
 # sys.path.append("linedraw")
-# from scripts.perlin import *
-# from scripts.filters import *
-# from scripts.strokesort import *
-# from scripts.util import *
-# from itertools import chain
+from scripts.perlin import *
+from scripts.filters import *
+from scripts.strokesort import *
+from scripts.util import *
+from itertools import chain
 
 
 def min_max_list_tuples(nums):
@@ -36,7 +38,8 @@ class LineDraw:
                  draw_border: bool = True,
                  resize: bool = False,
                  longest: int = 110,  # mm
-                 shortest: int = 80,  # mm
+                 shortest: int = 80,  # mm,
+                 offset: (float, float) = (0.0, 0.0),
                  resolution: int = 1024):
         """
         :param export_path:
@@ -48,6 +51,7 @@ class LineDraw:
         :param resolution:
         :param shortest: the shortest side of frame or paper to scale towards
         :param longest: the longest side of frame or paper to scale towards
+        ;param offset: offset in mm for translating the drawing
         @param export_path:
         @param draw_contours:
         @param draw_hatch:
@@ -89,6 +93,7 @@ class LineDraw:
         self.y_max = longest * 3.7795
         self.scale_factor = 1.0  # scaling factor to be calculated to have the image at max within the borders
         self.scale_margin_factor = 0.9  # factor so a drawing is a little of the edges (visually more pleasing)
+        self.offset = offset
 
     def find_edges(self, IM):
         print("finding edges...")
@@ -247,8 +252,8 @@ class LineDraw:
             out += '<g transform="scale( {} {}) translate( {} {} )">'.format(
                 self.scale_factor * self.scale_margin_factor,
                 self.scale_factor * self.scale_margin_factor,
-                self.center_transformation[0],
-                self.center_transformation[1])
+                self.center_transformation[0] + self.offset[0] * 3.7795,
+                self.center_transformation[1] + self.offset[1] * 3.7795)
         if not no_polyline:
             line_type_prefix = '<polyline points="'
         else:
@@ -378,6 +383,9 @@ if __name__ == "__main__":
     parser.add_argument('--shortest', '-y', dest='shortest',
                         default=80, action='store', nargs='?', type=int,
                         help='shortest side of paper (mm)')
+    parser.add_argument('--offset', '-of', dest='offset',
+                        default=(0, 0), action='store', nargs=2, type=float,
+                        help='offset of the paper (mm)')
     args = parser.parse_args()
 
     ld.export_path = args.output_path
@@ -392,4 +400,5 @@ if __name__ == "__main__":
     ld.longest = args.longest
     ld.shortest = args.shortest
     ld.border = args.draw_border
+    ld.offset = tuple(args.offset)
     ld.sketch(args.input_path)
