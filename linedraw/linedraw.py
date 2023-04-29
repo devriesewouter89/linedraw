@@ -37,6 +37,7 @@ class LineDraw:
                  no_polylines: bool = True,
                  draw_border: bool = True,
                  resize: bool = False,
+                 fixed_size: bool = False,
                  longest: int = 110,  # mm
                  shortest: int = 80,  # mm,
                  offset: (float, float) = (0.0, 0.0),
@@ -81,16 +82,18 @@ class LineDraw:
         self.perlin = Perlin()
         self.no_polylines = no_polylines
         self.border = draw_border
-        self.longest = longest
-        self.shortest = shortest
+
         self.resize = resize
         self.orig_width = 0
         self.orig_heigth = 0
         self.center_transformation = (0, 0)
+        self.fixed_size = fixed_size
+        self.longest = longest
+        self.shortest = shortest
         self.x_min = 0
         self.y_min = 0
-        self.x_max = shortest * 3.7795
-        self.y_max = longest * 3.7795
+        self.x_max = self.shortest * 3.7795
+        self.y_max = self.longest * 3.7795
         self.scale_factor = 1.0  # scaling factor to be calculated to have the image at max within the borders
         self.scale_margin_factor = 0.9  # factor so a drawing is a little of the edges (visually more pleasing)
         self.offset = offset
@@ -240,8 +243,13 @@ class LineDraw:
     # @staticmethod
     def makesvg(self, lines, no_polyline: bool = False):
         print("generating svg file...")
-        out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(self.shortest,
-                                                                                                         self.longest)
+        if self.fixed_size:
+            print("linedrawing has a fixed size")
+            out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{}mm" height="{}mm">'.format(
+                self.shortest,
+                self.longest)
+        else:
+            out = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1">'
         if self.border:
             out += '<rect x="0" width="{}mm" height="{}mm" fill="none" stroke="black" stroke-width="1.0"/>'.format(
                 self.shortest, self.longest)
@@ -377,6 +385,9 @@ if __name__ == "__main__":
     parser.add_argument('--resize', '-rs', dest='resize', const=not ld.resize,
                         default=ld.resize,
                         action='store_const', help="resize")
+    parser.add_argument('--fixed_size', '-fs', dest='fixed_size',
+                        const=not ld.fixed_size, default=ld.fixed_size, action='store_const',
+                        help='fixate size of the paper (mm)')
     parser.add_argument('--longest', '-x', dest='longest',
                         default=110, action='store', nargs='?', type=int,
                         help='longest side of paper (mm)')
@@ -399,6 +410,7 @@ if __name__ == "__main__":
     ld.resize = args.resize
     ld.longest = args.longest
     ld.shortest = args.shortest
+    ld.fixed_size = args.fixed_size
     ld.border = args.draw_border
     ld.offset = tuple(args.offset)
     ld.sketch(args.input_path)
