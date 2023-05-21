@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
+from itertools import chain
 
 sys.path.append("linedraw")
 from linedraw.scripts.perlin import *
