@@ -8,18 +8,18 @@ from PIL import Image, ImageOps
 from PIL.ImageDraw import ImageDraw
 
 sys.path.append("linedraw")
-# from linedraw.scripts.perlin import *
-# from linedraw.scripts.filters import *
-# from linedraw.scripts.strokesort import *
-# from linedraw.scripts.util import *
+from linedraw.scripts.perlin import *
+from linedraw.scripts.filters import *
+from linedraw.scripts.strokesort import *
+from linedraw.scripts.util import *
 
 
 # sys.path.append("linedraw")
-from scripts.perlin import *
-from scripts.filters import *
-from scripts.strokesort import *
-from scripts.util import *
-from itertools import chain
+# from scripts.perlin import *
+# from scripts.filters import *
+# from scripts.strokesort import *
+# from scripts.util import *
+# from itertools import chain
 
 
 def min_max_list_tuples(nums):
